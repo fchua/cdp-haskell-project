@@ -38,6 +38,9 @@ executable haskell-project
         random, 
         mtl, 
         pdf-toolbox-core ^>=0.1.1, 
-        pdf-toolbox-document ^>=0.1.2
+        pdf-toolbox-document ^>=0.1.2,
+        directory,
+        split,
+        select ^>=0.4.0.1
     hs-source-dirs:   app
     default-language: Haskell2010
