@@ -40,6 +40,8 @@ executable haskell-project
         pdf-toolbox-core ^>=0.1.1, 
         pdf-toolbox-document ^>=0.1.2,
         directory,
-        split
+        split,
+        text,
+        text-replace
     hs-source-dirs:   app
     default-language: Haskell2010
