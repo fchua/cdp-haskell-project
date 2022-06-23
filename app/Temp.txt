@@ -3,7 +3,7 @@
 Remove trailing words
 "\nWell-milled \nRice (Local)\nTilapia Galunggong\nWhole \nChicken\n*Egg \n(Medium)\nAmpalaya Tomato Cabbage\nPechay \nBaguio\nRed Onion \n(Local)\nNew Las Pi\241as City Public Market 40.00 140.00 240.00 200.00 6.00 140.00 100.00 80.00 80.00 100.00\nGuadalupe Public Market/Makati 44.00 140.00 240.00 190.00 6.25 120.00 100.00\nNOT \nAVAILABLE\n80.00 100.00\nSan Andres Market/Manila 41.00 120.00 240.00 190.00 6.00 135.00 100.00 90.00 80.00 110.00\nQuinta Market/Manila 42.00 130.00\nNOT \nAVAILABLE\n190.00 6.00 120.00 95.00 50.00 70.00 80.00\nPritil Market/Manila 43.00 120.00 220.00 195.00 5.50 130.00 80.00 50.00 55.00 80.00\nMarikina Public Market 42.00 140.00 240.00 190.00 6.50 130.00 90.00 80.00 80.00 100.00\nPamilihang Lungsod ng Muntinlupa 42.00 130.00 240.00 180.00 6.00 130.00 80.00\nNOT \nAVAILABLE\n90.00 70.00\nPasay City Market 40.00 110.00\nNOT \nAVAILABLE\n180.00 6.00 90.00 90.00\nNOT \nAVAILABLE\n60.00 90.00\nPasig City Mega Market 40.00 100.00 200.00 180.00 6.50 120.00 70.00 80.00 70.00 100.00\nCommonwealth Market/Quezon City 38.00 120.00 210.00 170.00 5.60 120.00 80.00 70.00 80.00 100.00\nMu\241oz Market/Quezon City 37.00 120.00 240.00 190.00 5.25 120.00 80.00 70.00 65.00 80.00\nMega Q-mart/Quezon City 44.00 120.00 240.00 200.00 6.00 120.00 80.00 70.00 70.00 80.00\nMalabon Central Market 40.00 120.00 240.00 178.00 6.00 110.00 80.00 70.00 70.00 80.00\n"
 
-Remove \nNOT \nAVAILABLE\n
+Search and replace known problematic words
 "\nWell-milled \nRice (Local)\nTilapia Galunggong\nWhole \nChicken\n*Egg \n(Medium)\nAmpalaya Tomato Cabbage\nPechay \nBaguio\nRed Onion \n(Local)\n
 New Las Pi\241as City Public Market 40.00 140.00 240.00 200.00 6.00 140.00 100.00 80.00 80.00 100.00\n
 Guadalupe Public Market/Makati 44.00 140.00 240.00 190.00 6.25 120.00 100.00  - 80.00 100.00\n
@@ -18,3 +18,12 @@ Commonwealth Market/Quezon City 38.00 120.00 210.00 170.00 5.60 120.00 80.00 70.
 Mu\241oz Market/Quezon City 37.00 120.00 240.00 190.00 5.25 120.00 80.00 70.00 65.00 80.00\n
 Mega Q-mart/Quezon City 44.00 120.00 240.00 200.00 6.00 120.00 80.00 70.00 70.00 80.00\n
 Malabon Central Market 40.00 120.00 240.00 178.00 6.00 110.00 80.00 70.00 70.00 80.00\n"
+
+Break the data into Market and Prices
+New Las Pi\241as City Public Market => 40.00 140.00 240.00 200.00 6.00 140.00 100.00 80.00 80.00 100.00
+Guadalupe Public Market/Makati => 44.00 140.00 240.00 190.00 6.25 120.00 100.00  - 80.00 100.00
+San Andres Market/Manila => 41.00 120.00 240.00 190.00 6.00 135.00 100.00 90.00 80.00 110.00
+
+- Use words to split into words
+- Use splitAt to separate the prices from the market
+- Combine the market words using unwords
