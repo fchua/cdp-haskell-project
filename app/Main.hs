@@ -2,16 +2,38 @@ module Main where
 
 import Debug.Trace
 import Text.Read
+import Text.Printf
 import Pdf.Core.File hiding (withPdfFile)
 import Pdf.Document
 import System.Directory
 import System.Console.ANSI
 import qualified Data.Text as T
+--import Data.Ord
+import Data.List
 
 type Market = String
 type Price = Maybe Double
 type Commodity = String
 type CommodityPrice = (Commodity, Price)
+
+data MarketPrice = MarketPrice String Double deriving Show
+
+market :: MarketPrice -> String
+market (MarketPrice m _) = m
+
+price :: MarketPrice -> Double
+price (MarketPrice _ p) = p
+
+getPrice :: Price -> Double
+getPrice (Just x) = x
+
+instance Eq MarketPrice where
+    a == b =  market a == market b && price a == price b
+
+instance Ord MarketPrice where
+    a `compare` b = 
+        let r = price a `compare` price b
+        in if r == EQ then market a `compare` market b else r
 
 -- not used, just an attempt to use StateMonad
 data Config = Config
@@ -41,6 +63,9 @@ dir = "input"
 prefix :: String
 prefix = "Price-Monitoring-"
 
+separator :: Int
+separator = 200
+
 months :: [ String ]
 months = [
     "January", 
@@ -69,6 +94,22 @@ commodities = [
     "Pechay_Baguio", 
     "Red_Onion" ]
 
+displayAll :: Pdf -> IO ()
+displayAll pdf = do
+    doc <- document pdf
+    catalog <- documentCatalog doc
+    rootNode <- catalogPageNode catalog
+    page <- pageNodePageByNum rootNode 1
+    text <- pageExtractText page
+    let noFooter = removeFooter text
+    let noExtraLines = T.unpack $ cleanData noFooter
+    let stringLines = lines noExtraLines
+    let (h, d) = splitDataToHeaderAndData stringLines
+    putStrLn $ take separator $ repeat '*'
+    let cleanedData = processDataRows h d
+    printTable cleanedData
+    putStrLn $ take separator $ repeat '*'
+
 searchAndDisplayResults :: String -> Pdf -> IO ()
 searchAndDisplayResults c pdf = do
     doc <- document pdf
@@ -78,16 +119,12 @@ searchAndDisplayResults c pdf = do
     text <- pageExtractText page
     let noFooter = removeFooter text
     let noExtraLines = T.unpack $ cleanData noFooter
---    putStrLn noExtraLines
     let stringLines = lines noExtraLines
---    putStrLn $ show stringLines
     let (h, d) = splitDataToHeaderAndData stringLines
-    putStrLn $ show h
-    putStrLn $ take 200 $ repeat '*'
+    putStrLn $ take separator $ repeat '*'
     let cleanedData = processDataRows h d
-    printTable cleanedData
-    putStrLn $ take 200 $ repeat '*'
     filterAndPrintTable c cleanedData
+    putStrLn $ take separator $ repeat '*'    
 
 -- discard footer text
 removeFooter :: T.Text -> T.Text
@@ -149,19 +186,26 @@ splitDataToMarketAndData headers text =
 processDataRows :: [String] -> [String] -> [(Market, [CommodityPrice])]
 processDataRows headers rows = map (\x -> splitDataToMarketAndData headers x) rows
 
+toMarketPrice :: [(Market, [CommodityPrice])] -> [MarketPrice]
+toMarketPrice xs = map (\x -> MarketPrice (fst x) (getPrice $ (snd.head.snd) x)) xs
+
 filterAndPrintTable :: String -> [(Market, [CommodityPrice])] -> IO ()
-filterAndPrintTable s xs = 
-    let ys = map (\x -> (fst x, filterCommodity s $ snd x) ) xs
-    in printTable ys
+filterAndPrintTable s xs = do
+    let ys = filter (\x -> (snd x) /= []) $ map (\x -> (fst x, filterCommodity s $ snd x) ) xs
+    mapM (\x -> printf "%-80s %.2f\n" (market x) (price x)) $ sort $ toMarketPrice ys
+    return ()
 
+-- find the commodity from the list
 filterCommodity :: String -> [CommodityPrice] -> [CommodityPrice]
-filterCommodity s xs = filter (\x -> (fst x) == s) xs
+filterCommodity s xs = filter (\x -> (fst x) == s && (snd x) /= Nothing) xs
 
+-- print the whole price list
 printTable :: [(Market, [CommodityPrice])] -> IO ()
 printTable xs = do
     mapM printMarket xs
     return ()
 
+-- print a single market
 printMarket :: (Market, [CommodityPrice]) -> IO ()
 printMarket p = do
     putStrLn $ fst p
@@ -177,7 +221,8 @@ printMenu = do
     putStrLn "* 1 - Files       *"
     putStrLn "* 2 - Commodities *"
     putStrLn "* 3 - Query       *"
-    putStrLn "* 4 - Exit        *"
+    putStrLn "* 4 - Display     *"
+    putStrLn "* 5 - Exit        *"
     putStrLn "*******************"
     putStrLn "Enter choice:"
 
@@ -202,12 +247,23 @@ printCommodities = do
 printSearch :: IO ()
 printSearch = do
     putStrLn ""
-    putStrLn "Enter file to search: "
+    putStrLn "Enter date to search: "
     file <- getLine
     putStrLn "Enter commodity: "
     commodity <- getLine
     if (elem commodity commodities) then searchCommodity file commodity else putStrLn "ERROR: Invalid commodity"
     return ()
+
+printDate :: IO ()
+printDate = do
+    putStrLn ""
+    putStrLn "Enter date to search: "
+    file <- getLine
+    let filepath = (getFilePath . getFileFromDate) file
+    exists <- doesFileExist filepath
+    if exists then withPdfFile filepath displayAll
+    else putStr "File not found."
+    return ()    
 
 searchCommodity :: String -> String -> IO ()
 searchCommodity dt cm = do
@@ -215,8 +271,6 @@ searchCommodity dt cm = do
     exists <- doesFileExist filepath
     if exists then searchCommodityInFile filepath cm 
     else putStr "File not found."
---    putStrLn $ "File exists: " ++ show exists
---    putStrLn $ "Loading " ++ filepath
 --    putStrLn "Average price is..."
 --    putStrLn "Lowest price is... in ..."
 --    putStrLn "Highest price is... in ..."
@@ -257,6 +311,9 @@ main = do
             printSearch
             main
         "4" -> do
+            printDate
+            main            
+        "5" -> do
             putStrLn "\nTHAT'S ALL FOLKS"
             return ()
         otherwise -> main
