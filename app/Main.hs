@@ -43,20 +43,24 @@ data Config = Config
         fileExtension :: String
     }
 
+-- not used, just an attempt to abstract data
 type PriceRow = [ Price ]
 
+-- not used, just an attempt to abstract data
 data PriceTable = PriceTable 
     {
         headers :: [ Commodity ],
         rows :: [ PriceRow ]
     }
 
+-- extraction logic
 -- break data into rows
 -- break rows into fields
 -- get the first field => Market
 -- get succeeding fields => Retail Price
 -- parse header row to get commodity names
 
+-- global variables
 dir :: String
 dir = "input"
 
@@ -66,6 +70,7 @@ prefix = "Price-Monitoring-"
 separator :: Int
 separator = 200
 
+-- not used but was intended for sorting the filenames
 months :: [ String ]
 months = [
     "January", 
@@ -81,6 +86,7 @@ months = [
     "November", 
     "December" ]
 
+-- list of valid commodities
 commodities :: [ String ]
 commodities = [ 
     "Well_Milled_Rice", 
@@ -101,15 +107,19 @@ displayAll pdf = do
     rootNode <- catalogPageNode catalog
     page <- pageNodePageByNum rootNode 1
     text <- pageExtractText page
-    let noFooter = removeFooter text
-    let noExtraLines = T.unpack $ cleanData noFooter
-    let stringLines = lines noExtraLines
-    let (h, d) = splitDataToHeaderAndData stringLines
-    putStrLn $ take separator $ repeat '*'
+    let noFooter = removeFooter text -- remove footer
+    let noExtraLines = T.unpack $ cleanData noFooter -- remove extra lines
+    let stringLines = lines noExtraLines -- split into separate lines
+    let (h, d) = splitDataToHeaderAndData stringLines -- split header and details
+    displayBorder
     let cleanedData = processDataRows h d
     printTable cleanedData
-    putStrLn $ take separator $ repeat '*'
+    displayBorder
 
+displayBorder :: IO ()
+displayBorder = putStrLn $ replicate separator '*'
+
+-- display prices from all markets for a given commodity
 searchAndDisplayResults :: String -> Pdf -> IO ()
 searchAndDisplayResults c pdf = do
     doc <- document pdf
@@ -121,10 +131,10 @@ searchAndDisplayResults c pdf = do
     let noExtraLines = T.unpack $ cleanData noFooter
     let stringLines = lines noExtraLines
     let (h, d) = splitDataToHeaderAndData stringLines
-    putStrLn $ take separator $ repeat '*'
+    displayBorder
     let cleanedData = processDataRows h d
     filterAndPrintTable c cleanedData
-    putStrLn $ take separator $ repeat '*'    
+    displayBorder
 
 -- discard footer text
 removeFooter :: T.Text -> T.Text
@@ -144,7 +154,7 @@ replaceList = [
 
 -- converts pair of String to pair of Text
 convertToText :: [ (String, String) ] -> [ (T.Text, T.Text) ]
-convertToText xs = map (\x -> (T.pack $ fst x, T.pack $ snd x) ) xs
+convertToText = map (\x -> (T.pack $ fst x, T.pack $ snd x) )
 
 -- cleans the raw data so it can be properly parsed
 cleanData :: T.Text -> T.Text
@@ -161,11 +171,6 @@ splitDataToHeaderAndData :: [String] -> ([String], [String])
 splitDataToHeaderAndData xs = 
     let (h, d) = splitAt 1 $ xs
     in (words $ head h, d)
-
-splitDataToHeaderAndData' :: T.Text -> ([T.Text], [T.Text])
-splitDataToHeaderAndData' text = 
-    let (h, d) = splitAt 1 $ T.lines text
-    in (T.words $ head h, d)    
 
 -- split market and data
 -- New Las Piñas City Public Market 40.00 140.00 240.00 200.00 6.00 140.00 100.00 80.00 80.00 100.00
@@ -251,7 +256,7 @@ printSearch = do
     file <- getLine
     putStrLn "Enter commodity: "
     commodity <- getLine
-    if (elem commodity commodities) then searchCommodity file commodity else putStrLn "ERROR: Invalid commodity"
+    if commodity `elem` commodities then searchCommodity file commodity else putStrLn "ERROR: Invalid commodity"
     return ()
 
 printDate :: IO ()
@@ -262,7 +267,7 @@ printDate = do
     let filepath = (getFilePath . getFileFromDate) file
     exists <- doesFileExist filepath
     if exists then withPdfFile filepath displayAll
-    else putStr "File not found."
+    else putStrLn "File not found."
     return ()    
 
 searchCommodity :: String -> String -> IO ()
@@ -270,10 +275,7 @@ searchCommodity dt cm = do
     let filepath = (getFilePath . getFileFromDate) dt
     exists <- doesFileExist filepath
     if exists then searchCommodityInFile filepath cm 
-    else putStr "File not found."
---    putStrLn "Average price is..."
---    putStrLn "Lowest price is... in ..."
---    putStrLn "Highest price is... in ..."
+    else putStrLn "File not found."
 
 searchCommodityInFile :: FilePath -> String -> IO ()
 searchCommodityInFile f c = do
