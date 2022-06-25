@@ -8,13 +8,12 @@ import Pdf.Document
 import System.Directory
 import System.Console.ANSI
 import qualified Data.Text as T
---import Data.Ord
 import Data.List
 
 type Market = String
-type Price = Maybe Double
 type Commodity = String
-type CommodityPrice = (Commodity, Price)
+type Price = Maybe Double
+type CommodityPrice = (Commodity, Price) -- used for displaying the results and further processing
 
 data MarketPrice = MarketPrice String Double deriving Show
 
@@ -25,6 +24,7 @@ price :: MarketPrice -> Double
 price (MarketPrice _ p) = p
 
 getPrice :: Price -> Double
+getPrice Nothing = 0
 getPrice (Just x) = x
 
 instance Eq MarketPrice where
@@ -68,7 +68,7 @@ prefix :: String
 prefix = "Price-Monitoring-"
 
 separator :: Int
-separator = 200
+separator = 90
 
 -- not used but was intended for sorting the filenames
 months :: [ String ]
@@ -106,7 +106,7 @@ displayAll pdf = do
     catalog <- documentCatalog doc
     rootNode <- catalogPageNode catalog
     page <- pageNodePageByNum rootNode 1
-    text <- pageExtractText page
+    text <- pageExtractText page -- extract the text content on page 2
     let noFooter = removeFooter text -- remove footer
     let noExtraLines = T.unpack $ cleanData noFooter -- remove extra lines
     let stringLines = lines noExtraLines -- split into separate lines
@@ -189,33 +189,30 @@ splitDataToMarketAndData headers text =
     in (unwords m, zip headers $ map (\x -> readMaybe $ x) d)
 
 processDataRows :: [String] -> [String] -> [(Market, [CommodityPrice])]
-processDataRows headers rows = map (\x -> splitDataToMarketAndData headers x) rows
+processDataRows headers = map (splitDataToMarketAndData headers) 
 
 toMarketPrice :: [(Market, [CommodityPrice])] -> [MarketPrice]
-toMarketPrice xs = map (\x -> MarketPrice (fst x) (getPrice $ (snd.head.snd) x)) xs
+toMarketPrice = map (\x -> MarketPrice (fst x) (getPrice $ (snd.head.snd) x))
 
 filterAndPrintTable :: String -> [(Market, [CommodityPrice])] -> IO ()
 filterAndPrintTable s xs = do
-    let ys = filter (\x -> (snd x) /= []) $ map (\x -> (fst x, filterCommodity s $ snd x) ) xs
-    mapM (\x -> printf "%-80s %.2f\n" (market x) (price x)) $ sort $ toMarketPrice ys
-    return ()
+    let ys = filter (\x -> snd x /= []) $ map (\x -> (fst x, filterCommodity s $ snd x) ) xs
+    mapM_ (\x -> printf "%-80s %.2f\n" (market x) (price x)) $ sort $ toMarketPrice ys
 
 -- find the commodity from the list
 filterCommodity :: String -> [CommodityPrice] -> [CommodityPrice]
-filterCommodity s xs = filter (\x -> (fst x) == s && (snd x) /= Nothing) xs
+filterCommodity s = filter (\x -> fst x == s && snd x /= Nothing)
 
 -- print the whole price list
 printTable :: [(Market, [CommodityPrice])] -> IO ()
 printTable xs = do
-    mapM printMarket xs
-    return ()
+    mapM_ printMarket xs
 
 -- print a single market
 printMarket :: (Market, [CommodityPrice]) -> IO ()
 printMarket p = do
     putStrLn $ fst p
-    mapM (\x -> putStrLn $ "\t" ++ show x) (snd p)
-    return ()
+    mapM_ (\x -> putStrLn $ "\t" ++ show x) (snd p)
 
 printMenu :: IO ()
 printMenu = do
@@ -234,7 +231,7 @@ printMenu = do
 printHelper :: [(Int, String)] -> IO ()
 printHelper [] = return ()
 printHelper (x:xs) = do
-    putStrLn $ show (fst x) ++ ") " ++ (snd x)
+    putStrLn $ show (fst x) ++ ") " ++ snd x
     printHelper xs
 
 printFiles :: IO ()
@@ -246,8 +243,8 @@ printFiles = do
 
 printCommodities :: IO ()
 printCommodities = do
-    mapM putStrLn commodities
-    return ()
+    putStrLn "[Commodities]"
+    mapM_ putStrLn commodities
 
 printSearch :: IO ()
 printSearch = do
@@ -268,7 +265,7 @@ printDate = do
     exists <- doesFileExist filepath
     if exists then withPdfFile filepath displayAll
     else putStrLn "File not found."
-    return ()    
+    return ()
 
 searchCommodity :: String -> String -> IO ()
 searchCommodity dt cm = do
@@ -318,4 +315,4 @@ main = do
         "5" -> do
             putStrLn "\nTHAT'S ALL FOLKS"
             return ()
-        otherwise -> main
+        _ -> main
