@@ -1,5 +1,9 @@
 module Main where
 
+-- BASIC ASSUMPTIONS
+-- The PDF content structure is "uniform" across different dates
+-- The name of commodities are "standard"
+
 import Debug.Trace
 import Text.Read
 import Text.Printf
@@ -28,7 +32,7 @@ getPrice Nothing = 0
 getPrice (Just x) = x
 
 instance Eq MarketPrice where
-    a == b =  market a == market b && price a == price b
+    a == b = market a == market b && price a == price b
 
 instance Ord MarketPrice where
     a `compare` b = 
