@@ -70,6 +70,9 @@ prefix = "Price-Monitoring-"
 separator :: Int
 separator = 90
 
+pageToLoad :: Int
+pageToLoad = 1
+
 -- not used but was intended for sorting the filenames
 months :: [ String ]
 months = [
@@ -100,41 +103,39 @@ commodities = [
     "Pechay_Baguio", 
     "Red_Onion" ]
 
-displayAll :: Pdf -> IO ()
-displayAll pdf = do
-    doc <- document pdf
-    catalog <- documentCatalog doc
-    rootNode <- catalogPageNode catalog
-    page <- pageNodePageByNum rootNode 1
-    text <- pageExtractText page -- extract the text content on page 2
-    let noFooter = removeFooter text -- remove footer
-    let noExtraLines = T.unpack $ cleanData noFooter -- remove extra lines
-    let stringLines = lines noExtraLines -- split into separate lines
-    let (h, d) = splitDataToHeaderAndData stringLines -- split header and details
-    displayBorder
-    let cleanedData = processDataRows h d
-    printTable cleanedData
-    displayBorder
+-- display prices of all commodities for all markets
+displayAllCommoditiesAndMarkets :: Pdf -> IO ()
+displayAllCommoditiesAndMarkets pdf = do
+    text <- getTextFromPageTwo pdf
+    printLine
+    printTable $ cleanAndConvertText text
+    printLine
 
-displayBorder :: IO ()
-displayBorder = putStrLn $ replicate separator '*'
+printLine :: IO ()
+printLine = putStrLn $ replicate separator '*'
 
 -- display prices from all markets for a given commodity
-searchAndDisplayResults :: String -> Pdf -> IO ()
-searchAndDisplayResults c pdf = do
+searchCommodityAndDisplayResults :: String -> Pdf -> IO ()
+searchCommodityAndDisplayResults c pdf = do
+    text <- getTextFromPageTwo pdf
+    printLine
+    filterAndPrintTable c $ cleanAndConvertText text
+    printLine
+
+-- reads the PDF file and extracts the text from the 2nd page
+getTextFromPageTwo :: Pdf -> IO T.Text
+getTextFromPageTwo pdf = do
     doc <- document pdf
     catalog <- documentCatalog doc
     rootNode <- catalogPageNode catalog
-    page <- pageNodePageByNum rootNode 1
-    text <- pageExtractText page
-    let noFooter = removeFooter text
-    let noExtraLines = T.unpack $ cleanData noFooter
-    let stringLines = lines noExtraLines
-    let (h, d) = splitDataToHeaderAndData stringLines
-    displayBorder
-    let cleanedData = processDataRows h d
-    filterAndPrintTable c cleanedData
-    displayBorder
+    page <- pageNodePageByNum rootNode pageToLoad
+    pageExtractText page
+
+-- cleans the text content and build a usable structure
+cleanAndConvertText :: T.Text -> [(Market, [CommodityPrice])]
+cleanAndConvertText text =
+    let (h, d) = splitDataToHeaderAndData $ lines $ T.unpack $ cleanData $ removeFooter text
+    in processDataRows h d
 
 -- discard footer text
 removeFooter :: T.Text -> T.Text
@@ -169,7 +170,7 @@ searchAndReplaceAll xs text = foldr (\x -> T.replace (fst x) (snd x)) text xs
 -- split headers and markets
 splitDataToHeaderAndData :: [String] -> ([String], [String])
 splitDataToHeaderAndData xs = 
-    let (h, d) = splitAt 1 $ xs
+    let (h, d) = splitAt 1 xs
     in (words $ head h, d)
 
 -- split market and data
@@ -186,7 +187,7 @@ splitDataToMarketAndData' num text =
 splitDataToMarketAndData :: [String] -> String -> (Market, [CommodityPrice])
 splitDataToMarketAndData headers text = 
     let (m, d) = splitDataToMarketAndData' (length headers) text
-    in (unwords m, zip headers $ map (\x -> readMaybe $ x) d)
+    in (unwords m, zip headers $ map readMaybe d)
 
 processDataRows :: [String] -> [String] -> [(Market, [CommodityPrice])]
 processDataRows headers = map (splitDataToMarketAndData headers) 
@@ -246,29 +247,31 @@ printCommodities = do
     putStrLn "[Commodities]"
     mapM_ putStrLn commodities
 
-printSearch :: IO ()
-printSearch = do
+runQuery :: IO ()
+runQuery = do
     putStrLn ""
     putStrLn "Enter date to search: "
     file <- getLine
     putStrLn "Enter commodity: "
     commodity <- getLine
-    if commodity `elem` commodities then searchCommodity file commodity else putStrLn "ERROR: Invalid commodity"
+    if commodity `elem` commodities 
+        then searchCommodityByDate file commodity 
+        else putStrLn "ERROR: Invalid commodity"
     return ()
 
-printDate :: IO ()
-printDate = do
+printByDate :: IO ()
+printByDate = do
     putStrLn ""
     putStrLn "Enter date to search: "
     file <- getLine
     let filepath = (getFilePath . getFileFromDate) file
     exists <- doesFileExist filepath
-    if exists then withPdfFile filepath displayAll
+    if exists then withPdfFile filepath displayAllCommoditiesAndMarkets
     else putStrLn "File not found."
     return ()
 
-searchCommodity :: String -> String -> IO ()
-searchCommodity dt cm = do
+searchCommodityByDate :: String -> String -> IO ()
+searchCommodityByDate dt cm = do
     let filepath = (getFilePath . getFileFromDate) dt
     exists <- doesFileExist filepath
     if exists then searchCommodityInFile filepath cm 
@@ -276,7 +279,7 @@ searchCommodity dt cm = do
 
 searchCommodityInFile :: FilePath -> String -> IO ()
 searchCommodityInFile f c = do
-    withPdfFile f (searchAndDisplayResults c)
+    withPdfFile f (searchCommodityAndDisplayResults c)
 
 -- removes the filename prefix and extension to get the date
 getDateFromFile :: String -> String
@@ -307,10 +310,10 @@ main = do
             printCommodities
             main
         "3" -> do
-            printSearch
+            runQuery
             main
         "4" -> do
-            printDate
+            printByDate
             main            
         "5" -> do
             putStrLn "\nTHAT'S ALL FOLKS"
