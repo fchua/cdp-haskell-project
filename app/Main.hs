@@ -138,8 +138,7 @@ getTextFromPageTwo pdf = do
 -- cleans the text content and build a usable structure
 cleanAndConvertText :: T.Text -> [(Market, [CommodityPrice])]
 cleanAndConvertText text =
-    let (h, d) = splitDataToHeaderAndData $ lines $ T.unpack $ cleanData $ removeFooter text
-    in processDataRows h d
+    let (h, d) = splitDataToHeaderAndData $ lines $ T.unpack $ cleanData $ removeFooter text in processDataRows h d
 
 -- discard footer text
 removeFooter :: T.Text -> T.Text
@@ -163,7 +162,7 @@ convertToText = map (\x -> (T.pack $ fst x, T.pack $ snd x) )
 
 -- cleans the raw data so it can be properly parsed
 cleanData :: T.Text -> T.Text
-cleanData = searchAndReplaceAll $ convertToText $ replaceList
+cleanData = searchAndReplaceAll $ convertToText replaceList
 
 -- cleans the raw headers
 searchAndReplaceAll :: [(T.Text, T.Text)] -> T.Text -> T.Text
@@ -174,16 +173,14 @@ searchAndReplaceAll xs text = foldr (\x -> T.replace (fst x) (snd x)) text xs
 -- split headers and markets
 splitDataToHeaderAndData :: [String] -> ([String], [String])
 splitDataToHeaderAndData xs = 
-    let (h, d) = splitAt 1 xs
-    in (words $ head h, d)
+    let (h, d) = splitAt 1 xs in (words $ head h, d)
 
 -- split market and data
 -- New Las Piñas City Public Market 40.00 140.00 240.00 200.00 6.00 140.00 100.00 80.00 80.00 100.00
 -- ([Text],[Text])
 splitDataToMarketAndData' :: Int -> String -> ([String], [String])
 splitDataToMarketAndData' num text = 
-    let tokens = words text
-    in splitAt (length tokens - num) tokens
+    let tokens = words text in splitAt (length tokens - num) tokens
 
 -- convert to proper type
 -- (Market, [Price])
@@ -263,6 +260,7 @@ runQuery = do
         else putStrLn "ERROR: Invalid commodity"
     return ()
 
+-- print all commodities and prices for a particular date
 printByDate :: IO ()
 printByDate = do
     putStrLn ""
@@ -274,6 +272,7 @@ printByDate = do
     else putStrLn "File not found."
     return ()
 
+-- search commodity using the date
 searchCommodityByDate :: String -> String -> IO ()
 searchCommodityByDate dt cm = do
     let filepath = (getFilePath . getFileFromDate) dt
@@ -281,6 +280,7 @@ searchCommodityByDate dt cm = do
     if exists then searchCommodityInFile filepath cm 
     else putStrLn "File not found."
 
+-- search commodity in the PDF file
 searchCommodityInFile :: FilePath -> String -> IO ()
 searchCommodityInFile f c = do
     withPdfFile f (searchCommodityAndDisplayResults c)

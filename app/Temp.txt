@@ -27,3 +27,8 @@ San Andres Market/Manila => 41.00 120.00 240.00 190.00 6.00 135.00 100.00 90.00 
 - Use words to split into words
 - Use splitAt to separate the prices from the market
 - Combine the market words using unwords
+
+-- String -> Text (unpack and pack)
+-- splitAt
+-- lines
+-- words and unwords
